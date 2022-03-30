@@ -8,11 +8,14 @@ from torch.nn import functional as F
 
 from pl_bolts import _HTTPS_AWS_HUB
 from pl_bolts.models.autoencoders.components import (
+    resnetSimple_encoder,
+    resnetSimple_decoder,
     resnet18_decoder,
     resnet18_encoder,
     resnet50_decoder,
     resnet50_encoder,
 )
+from pl_bolts.models.autoencoders.basic_ae.brainweb_ae import simple_encoder, simple_decoder
 
 
 class AE(LightningModule):
@@ -67,6 +70,11 @@ class AE(LightningModule):
         self.input_height = input_height
 
         valid_encoders = {
+            "simple": {"enc": simple_encoder, "dec": simple_decoder},
+            "resnetSimple": {
+                "enc": resnetSimple_encoder,
+                "dec": resnetSimple_decoder,
+            },
             "resnet18": {
                 "enc": resnet18_encoder,
                 "dec": resnet18_decoder,
@@ -115,12 +123,23 @@ class AE(LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, logs = self.step(batch, batch_idx)
-        self.log_dict({f"train_{k}": v for k, v in logs.items()}, on_step=True, on_epoch=False)
+        self.log_dict(
+            {f"train_{k}": v for k, v in logs.items()}, on_step=True, prog_bar=True, sync_dist=True
+        )  # on_epoch=False,
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, logs = self.step(batch, batch_idx)
-        self.log_dict({f"val_{k}": v for k, v in logs.items()})
+        self.log_dict(
+            {f"val_{k}": v for k, v in logs.items()}, on_step=True, prog_bar=True, sync_dist=True
+        )  # on_epoch=False,
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        loss, logs = self.step(batch, batch_idx)
+        self.log_dict(
+            {f"test_{k}": v for k, v in logs.items()}, on_step=True, prog_bar=True, sync_dist=True
+        )  # on_epoch=False,
         return loss
 
     def configure_optimizers(self):

@@ -192,11 +192,13 @@ class ResNetEncoder(nn.Module):
         self.inplanes = 64
         self.first_conv = first_conv
         self.maxpool1 = maxpool1
+        self.in_channel = 3
+        self.is_brainweb = is_brainweb
 
         if self.first_conv:
-            self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+            self.conv1 = nn.Conv2d(self.in_channel, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         else:
-            self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
+            self.conv1 = nn.Conv2d(self.in_channel, self.inplanes, kernel_size=3, stride=1, padding=1, bias=False)
 
         self.bn1 = nn.BatchNorm2d(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
@@ -247,7 +249,7 @@ class ResNetEncoder(nn.Module):
 class ResNetDecoder(nn.Module):
     """Resnet in reverse order."""
 
-    def __init__(self, block, layers, latent_dim, input_height, first_conv=False, maxpool1=False):
+    def __init__(self, block, layers, latent_dim, input_height, first_conv=False, maxpool1=False, is_brainweb=False):
         super().__init__()
 
         self.expansion = block.expansion
@@ -255,11 +257,11 @@ class ResNetDecoder(nn.Module):
         self.first_conv = first_conv
         self.maxpool1 = maxpool1
         self.input_height = input_height
+        self.is_brainweb = is_brainweb
 
         self.upscale_factor = 8
 
         self.linear = nn.Linear(latent_dim, self.inplanes * 4 * 4)
-
         self.layer1 = self._make_layer(block, 256, layers[0], scale=2)
         self.layer2 = self._make_layer(block, 128, layers[1], scale=2)
         self.layer3 = self._make_layer(block, 64, layers[2], scale=2)
@@ -307,6 +309,7 @@ class ResNetDecoder(nn.Module):
         x = self.upscale1(x)
 
         x = self.layer1(x)
+
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
@@ -314,6 +317,14 @@ class ResNetDecoder(nn.Module):
 
         x = self.conv1(x)
         return x
+
+
+def resnetSimple_encoder(first_conv, maxpool1, in_channel=254):
+    return ResNetEncoder(EncoderBlock, [1, 1, 1, 1], first_conv, maxpool1, is_brainweb=True)
+
+
+def resnetSimple_decoder(latent_dim, input_height, first_conv, maxpool1):
+    return ResNetDecoder(DecoderBlock, [3, 1, 1, 1], latent_dim, input_height, first_conv, maxpool1, is_brainweb=True)
 
 
 def resnet18_encoder(first_conv, maxpool1):
