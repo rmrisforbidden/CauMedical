@@ -20,29 +20,6 @@ from pl_bolts.models.autoencoders import seq_AE
 from module.seq_datamodule import MRIDataModule
 
 
-# Example
-"""
-# Basic run
-from pl_bolts.models.autoencoders import AE
-model = AE()
-trainer = Trainer()
-trainer.fit(model)
-
-# Change Encoder
-from pl_bolts.models.autoencoders import AE
-class MyAEFlavor(AE):
-    def init_encoder(self, hidden_dim, latent_dim, input_width, input_height):
-        encoder = YourSuperFancyEncoder(...)
-        return encoder
-
-# Pretrained Encoder
-from pl_bolts.models.autoencoders import AE
-ae = AE(input_height=32)
-print(AE.pretrained_weights_available())
-ae = ae.from_pretrained('cifar10-resnet18')
-ae.freeze()
-"""
-
 
 def cli_main():
     # ------------
@@ -69,19 +46,7 @@ def cli_main():
     # data, model
     # ------------
     datamodule = None
-    if args.dataset == "cifar10":
-        model = AE(enc_type="resnet18", maxpool1=False, enc_out_dim=512, latent_dim=256, input_height=32)
-        args.patch_size = 8
-        data_module = CIFAR10DataModule(
-            data_dir=args.data_dir, dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers
-        )
-    elif args.dataset == "brainweb":
-        model = AE(enc_type="simple", maxpool1=False, enc_out_dim=254, latent_dim=254, input_height=144)
-        args.patch_size = 16
-        data_module = BrainWebDataModule(
-            data_dir=args.data_dir, dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers
-        )
-    elif args.dataset == "sequence":
+    if args.dataset == "sequence":
         data_module = MRIDataModule(
             batch_size=args.batch_size, num_workers=args.num_workers, type="seq", subsamp=args.subsamp, seq_jump=args.seq_jump
         )
@@ -96,7 +61,7 @@ def cli_main():
     if "fc" in args.enc_type:
         enc_out_dim = 300 # 512,
         latent_dim = 2  # T1 and T2,
-        input_size = (1000//args.subsamp,)  # self.L//subsamp of bloch decoder, (200,)
+        input_size = (200,) #(1000//args.subsamp,)  # self.L//subsamp of bloch decoder, (200,)
     elif "cnn" in args.enc_type:
         enc_out_dim = None
         latent_dim = (3, 128, 128)
@@ -126,11 +91,11 @@ def cli_main():
             api_token=API_KEY,
             project=f"CausalMRI/{args.default_root_dir.split('/')[-1]}",
             capture_stdout=False,
+            mode="debug"
             # "sync"
         )  # mode="debug",
         neptune_logger = NeptuneLogger(run=run)
         dirpath = os.path.join(args.default_root_dir, neptune_logger.version)
-        neptune_logger.log_hyperparams(args)
 
         # ------------
         # callbacks
